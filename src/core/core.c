@@ -31,3 +31,42 @@ void add_host(struct sockaddr_in *addr, char *host)
 		exit(1);
 	}
 }
+
+char *datetime()
+{
+	time_t now = time(NULL);
+	return ctime(&now);
+}
+
+int  sig_station(action_t a, int signal)
+{
+	static int internal_sig = 0;
+	
+	switch(a)
+	{
+		case GET: {
+			return (internal_sig);
+		} break;
+		case SET: {
+			internal_sig = signal;
+			if (signal == SIGINT)
+				printf("success capturing SIGINT\n");
+		} break;
+	}
+
+	return (0);
+}
+
+void handle_signal(int signal)
+{
+	sig_station(SET, signal);
+}
+
+void signal_handler_init()
+{
+	struct sigaction sa;
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+}
