@@ -2,9 +2,10 @@
 
 int main(int argc, char *argv[])
 {
-	int sockfd = 0, n = 0;
-	char recvBuff[1024];
-	struct sockaddr_in serv_addr;
+	int i;
+	socket_t client = { 0 };
+	buffer_t buff   = { 0 };
+	buff.data       = NULL;
 
 	if(argc != 2)
 	{
@@ -12,55 +13,41 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	memset(recvBuff, '0',sizeof(recvBuff));
+	make_tcp_sock(&(client.sockets.client_sk));
+	prepare_sock(&client, PORT);
+	add_host(&(client.server_addr), argv[1]);
 
-	/* a socket is created through call to socket() function */
-	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-	{
-		printf("\n Error : Could not create socket \n");
-		return 1;
-	}
-
-	memset(&serv_addr, '0', sizeof(serv_addr));
-
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(PORT);
-
-	if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
-	{
-		printf("\n inet_pton error occured\n");
-		return 1;
-	}
-
-	/* Information like IP address of the remote host and its port is
-	 * bundled up in a structure and a call to function connect() is made
-	 * which tries to connect this socket with the socket (IP address and port)
-	 * of the remote host
-	 */
-	if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+	if(connect(client.sockets.client_sk, (struct sockaddr *)&(client.server_addr), sizeof(client.server_addr)) < 0)
 	{
 		printf("\n Error : Connect Failed \n");
 		return 1;
 	}
 
-	/* Once the sockets are connected, the server sends the data (date+time)
-	 * on clients socket through clients socket descriptor and client can read it
-	 * through normal read call on the its socket descriptor.
-	 */
-	while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
+	while (1)
 	{
-		recvBuff[n] = 0;
+		printf("$ ");
+		buff.size = getline(&buff.data, &buff.cap, stdin);
+		buff.data[buff.size - 1] = 0;
+		
+		for(i = 0; i < buff.size; ++i)
+			printf("%c -> %i\n", buff.data[i], buff.data[i]);
 
-		if(fputs(recvBuff, stdout) == EOF)
+		
+		write(client.sockets.client_sk, buff.data, (buff.size - 1));
+		if (strcmp(buff.data, "q") == 0)
 		{
-			printf("\n Error : Fputs error\n");
+			break;
+		}
+
+		if (buff.data != NULL)
+		{
+			free(buff.data);
+			buff.data = NULL;
 		}
 	}
 
-	if(n < 0)
-	{
-		printf("\n Read error \n");
-	}
+	if (buff.data != NULL)
+		free(buff.data);
 
 	return 0;
 }

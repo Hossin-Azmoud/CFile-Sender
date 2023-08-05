@@ -1,54 +1,62 @@
 #include "file_receiver.h"
-
-#define MAX_CLIENTS 10
-
-typedef struct server_socket_s
-{
-	int fd;
-	int client_fd;
-	struct sockaddr_in server_addr;
-} socket_t;
+#define MAX_BYTES 1024
 
 int main()
 {
+	int i;
 	socket_t server = { 0 };
-	char sendBuff[1025];
-	time_t ticks;
+	time_t tick = time(NULL);
+	buffer_t buff   = { 0 };
+	int  connected = 0;
+	buff.data       = NULL;
 
-	/* creates an UN-named socket inside the kernel and returns
-	 * an integer known as socket descriptor
-	 * This function takes domain/family as its first argument.
-	 * For Internet family of IPv4 addresses we use AF_INET
-	 */
-
-	server.fd = socket(AF_INET, SOCK_STREAM, 0);
-	memset(&(server.server_addr), '0', sizeof(server.server_addr));
-	memset(sendBuff, '0', sizeof(sendBuff));
-
-	server.server_addr.sin_family = AF_INET;
-	server.server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	server.server_addr.sin_port = htons(PORT);
+	make_tcp_sock(&(server.sockets.server_sk));
+	prepare_sock(&server, PORT);
+	add_host(&(server.server_addr), NULL);
 
 	bind(
-		server.fd, 
+		server.sockets.server_sk, 
 		(struct sockaddr*)(&(server.server_addr)), 
 		sizeof((server.server_addr))
 	);
 
-
-	listen(server.fd, MAX_CLIENTS);
+	listen(server.sockets.server_sk, MAX_CLIENTS);
 	printf("listening in port: %i\n", PORT);
 
-	while(1)
+	while (1)
 	{
+		server.sockets.client_sk = accept(server.sockets.server_sk, (struct sockaddr*)NULL, NULL);
+		printf("client connected! \n");
+		/* Client loop. */
+		connected = 1;
 
-		server.client_fd = accept(server.fd, (struct sockaddr*)NULL, NULL);
-		ticks = time(NULL);
-		snprintf(sendBuff, sizeof(sendBuff), "%.24s\r\n", ctime(&ticks));
-		write(server.client_fd, sendBuff, strlen(sendBuff));
-		close(server.client_fd);
+		while (connected)
+		{
+			buff.data = malloc(sizeof(char) * MAX_BYTES);
+			while ((buff.size = read(server.sockets.client_sk, buff.data, MAX_BYTES)) > 0)
+			{
+				buff.data[buff.size] = 0;
+				
+				for(i = 0; i < buff.size; i++)
+					printf("%c -> %i\n", buff.data[i], buff.data[i]);
+				if (strcmp(buff.data, "q") == 0)
+				{
+					printf("Disconnect msg!");
+					connected = 0;
+					break;
+				}
+
+				printf("CLIENT %s : %s\n", ctime(&tick), buff.data);
+				free(buff.data);
+				buff.data = malloc(sizeof(char) * MAX_BYTES);
+			}
+			if (buff.data != NULL)
+				free(buff.data);
+		}
+		
+		printf("A connection was lost!");
+		close(server.sockets.client_sk);
 		sleep(1);
-
 	}
 
 	return (0);
