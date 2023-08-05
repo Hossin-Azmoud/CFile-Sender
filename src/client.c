@@ -29,10 +29,6 @@ int main(int argc, char *argv[])
 		buff.size = getline(&buff.data, &buff.cap, stdin);
 		buff.data[buff.size - 1] = 0;
 		
-		for(i = 0; i < buff.size; ++i)
-			printf("%c -> %i\n", buff.data[i], buff.data[i]);
-
-		
 		write(client.sockets.client_sk, buff.data, (buff.size - 1));
 		if (strcmp(buff.data, "q") == 0)
 		{

@@ -33,12 +33,11 @@ int main()
 		while (connected)
 		{
 			buff.data = malloc(sizeof(char) * MAX_BYTES);
-			while ((buff.size = read(server.sockets.client_sk, buff.data, MAX_BYTES)) > 0)
+			buff.size = read(server.sockets.client_sk, buff.data, MAX_BYTES);
+
+			while ((buff.size > 0) && connected)
 			{
 				buff.data[buff.size] = 0;
-				
-				for(i = 0; i < buff.size; i++)
-					printf("%c -> %i\n", buff.data[i], buff.data[i]);
 				if (strcmp(buff.data, "q") == 0)
 				{
 					printf("Disconnect msg!");
@@ -46,10 +45,12 @@ int main()
 					break;
 				}
 
-				printf("CLIENT %s : %s\n", ctime(&tick), buff.data);
+				printf("CLIENT msg: %s %s\n", ctime(&tick), buff.data);
 				free(buff.data);
 				buff.data = malloc(sizeof(char) * MAX_BYTES);
+				buff.size = read(server.sockets.client_sk, buff.data, MAX_BYTES);
 			}
+
 			if (buff.data != NULL)
 				free(buff.data);
 		}
